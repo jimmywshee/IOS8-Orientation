@@ -704,55 +704,6 @@ __WLUtils = function() {
         }
         return response;
     };
-    
-    /**
-	 * Version compares 2 version numbers in strings to the length of the maxLength parameter
-	 * @param {string} x
-	 * @param {string} y
-	 * @param {string} maxLength
-	 * @return -1 if x>y, 1 if x<y, or 0 if equal
-	 */
-	this.versionCompare = function(x, y, maxLength){
-		var i = 0,
-		x_components = x.split("."),
-		y_components = y.split("."),
-		len = Math.min(x_components.length, y_components.length),
-		maxLng = maxLength || 5;
-
-		if (x === y) {
-			return 0;
-		}
-	
-		for (i = 0; i < len; i += 1) {
-	
-			// x > y
-			if (parseInt(x_components[i]) > parseInt(y_components[i])) {
-				return 1;
-			}
-	
-			// y > x
-			if (parseInt(x_components[i]) < parseInt(y_components[i])) {
-				return -1;
-			}
-			
-			if(i >= maxLng) break; //check only up to maxLength+1 parts
-			
-			// If one's a prefix of the other, the longer one is greater.
-		    if (x_components.length > y_components.length)
-		    {
-		        return 1;
-		    }
-	
-		    if (x_components.length < y_components.length)
-		    {
-		        return -1;
-		    }
-			
-			
-		}
-	
-		return 0; //same
-	};
 }; // End WL.Utils
 
 __WL.prototype.Utils = new __WLUtils;
@@ -832,10 +783,7 @@ __WLSimpleDialog = function() {
      * @param option
      *            Optional. When native dialog is not available for the current
      *            environment. An object of the following form: { title: string,
-     *            text: string, isModal: boolean } (isModal has effect for Android only and 
-     *            is set by diagnostic dialog when it doesn't display Close button; this is 
-     *            needed to prevent users from working online when direct update failed.)
-     *  	  	           
+     *            text: string }
      */
     this.show = function(title, text, buttons, options) {
         var wlDialogContainer = WLJSX.$('WLdialogContainer');
@@ -863,41 +811,16 @@ __WLSimpleDialog = function() {
             	buttonsArray[i] = buttons[i].text.replace(",", "‚");
             }
             
-            // decide whether the dialog in android should be a modal one 
-            // this funciton contains framework logic that should be refactored out of simpleDialog.show()!!!!
-            function isShowModalDialogInAndroid()
-            {
-            	if (WL.StaticAppProps.ENVIRONMENT != WL.Env.ANDROID) {
-
-            		// this hack is for Android only ...
-            		return false;
-            	}
-            	
-            	// modal dialog in direct update 
-                var isAndroidDirectUpdateModal = (title == WL.ClientMessages.directUpdateNotificationTitle || title == WL.ClientMessages.directUpdateErrorTitle);
-                // if there is a single button which isn't close in remote disable, we should have a modal dialog
-                var isAndroidRemoteDisableModal = (!WL.Client.isShowCloseButtonOnRemoteDisable() && buttons.length == 1 && buttons[0].text.indexOf(WL.ClientMessages.close) == -1);
-                
-                // modal dialog if direct update failed, close button is hidden and this is a 
-                // diagnostic dialog with request timeout (so in this case options.isModal is true)
-                var isModal =  (isAndroidDirectUpdateModal || isAndroidRemoteDisableModal || 
-                				typeof options != 'undefined' && options != null && options.isModal);
-                
-                return isModal;
-            }
+            //For Android there is special case were dialog must be modal (no back)
+            var isAndroidDirectUpdateCase = WL.StaticAppProps.ENVIRONMENT == WL.Env.ANDROID && title == WL.ClientMessages.directUpdateNotificationTitle;
             
-            // Check if we should use a modal dialog in Android
-            var isAndroidModalDialog = isShowModalDialogInAndroid();
-            var isWPEnvironment = WL.StaticAppProps.ENVIRONMENT == WL.Env.WINDOWS_PHONE || WL.StaticAppProps.ENVIRONMENT == WL.Env.WINDOWS_PHONE_8; 
-            // Use a custom plugin for Windows Phone and for Android modal Dialogue
-            if (isWPEnvironment || isAndroidModalDialog) {
-            	var dialogPluginFunctionName = isWPEnvironment ? "showDialog" : "confirm";
+            if (WL.StaticAppProps.ENVIRONMENT == WL.Env.WINDOWS_PHONE || WL.StaticAppProps.ENVIRONMENT == WL.Env.WINDOWS_PHONE_8 || isAndroidDirectUpdateCase) {
+            	var dialogPluginFunctionName = isAndroidDirectUpdateCase ? "confirm" : "showDialog";
             	cordova.exec(function (result) { WL.SimpleDialog.__callback(result); }, 
             			function (err) { WL.Logger.error("WL.SimpleDialog.show() error in invoking callback."); }, 
             			"WLCustomDialog", dialogPluginFunctionName, [text, title, buttonsArray.join(",")]);
             } else {
-            	// use cordova to show the dialogue 
-               navigator.notification.confirm(text, WL.SimpleDialog.__callback, title, buttonsArray.join(","));
+                navigator.notification.confirm(text, WL.SimpleDialog.__callback, title, buttonsArray.join(","));
             }
         } else if (WL.StaticAppProps.ENVIRONMENT == WL.Environment.BLACKBERRY) {
             var buttonTitlesArray = new Array();
@@ -1095,6 +1018,107 @@ __WLApp = function() {
 
 __WL.prototype.App = new __WLApp;
 WL.App = new __WLApp;
+
+__WLLogger = function() {
+    var priority = {
+        DEBUG : 'DEBUG',
+        ERROR : 'ERROR',
+        WARN  : 'WARN',
+        INFO  : 'INFO'
+    };
+
+	var enableLogger = true;
+	
+    this.__init = function(enabled) {
+		if (typeof(enabled) !== 'undefined'){
+			enableLogger = enabled;
+		}
+    };
+
+    this.debug = function(msg, ex) {
+        log(msg, priority.DEBUG, ex);
+    };
+
+    this.error = function(msg, ex) {
+        log(msg, priority.ERROR, ex);
+    };
+
+    function log(msg, priority, ex) {
+        if (!enableLogger || typeof msg === 'undefined' || msg === null) {
+            return;
+        }
+
+        try {
+            // Translating objects to strings
+            if (typeof msg != 'string') {
+                msg = WLJSX.Object.toJSON(msg);
+            }
+        } catch (e) {
+            // there was an exception, cannot log, returning
+            return;
+        }
+
+        msg = WLJSX.String.stripScripts(msg);
+        msg = WLJSX.String.escapeHTML(msg);
+
+        if (typeof ex !== "undefined") {
+            msg += " " + WL.App.getErrorMessage(ex);
+        }
+
+        switch (WL.Client.getEnvironment()) {
+        case WL.Env.ADOBE_AIR:
+            // Output to Introspector should only be available in debug mode.
+            if (air.Introspector) {
+                air.Introspector.Console.log(msg);
+            }
+            break;
+        case WL.Env.OSX_DASHBOARD:
+            if (typeof window != 'undefind' && typeof window.console != 'undefind' && window.console.log != 'undefind') {
+                switch (priority) {
+                case "ERROR":
+                    window.console.error(msg);
+                    break;
+                case "DEBUG":
+                    window.console.debug(msg);
+                    break;
+                default:
+                    window.console.log(msg);
+                }
+            }
+            break;
+        case WL.Env.IPHONE:
+        case WL.Env.IPAD:
+            if (typeof (window.debug) != 'undefined') {
+                switch (priority) {
+                case "ERROR":
+                    window.debug.error(msg);
+                    break;
+                case "DEBUG":
+                    window.debug.log(msg);
+                    break;
+                default:
+                    window.debug.log(msg);
+                }
+            }
+            break;
+        case WL.Env.ANDROID:
+        case WL.Env.BLACKBERRY:
+        //BLACKBERRY10 uses console.log, so no special need here
+        case WL.Env.WINDOWS_PHONE:
+        case WL.Env.WINDOWS_PHONE_8:
+            break;
+        default:
+            try {
+                console.log(msg);
+            } catch (e) {
+            }
+            break;
+        }
+    }
+    /* End Debug Panel */
+};
+__WL.prototype.Logger = new __WLLogger;
+WL.Logger = new __WLLogger;
 
 WL.Response = WLJSX.Class.create({
     invocationContext : null,

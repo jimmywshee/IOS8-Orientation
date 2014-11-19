@@ -23,14 +23,3 @@ wl_noDeviceProvisioningChallengeHandler.onDeviceAuthDataReady = function(deviceD
 	wl_noDeviceProvisioningChallengeHandler.submitChallengeAnswer(answer);
 };
 
-wl_noDeviceProvisioningChallengeHandler.handleFailure = function(err, request, response){
-	if (err.reason == "bad token") {
-		if (wl_noDeviceProvisioningChallengeHandler.numOfFailures < wl_noDeviceProvisioningChallengeHandler.MAX_NUMBER_OF_FAILURES){
-			wl_noDeviceProvisioningChallengeHandler.numOfFailures++;
-			request.sendRequest();
-		}
-		else{
-			request.onFailure(response);
-		}
-	}
-};

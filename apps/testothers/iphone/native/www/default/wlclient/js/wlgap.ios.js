@@ -286,7 +286,7 @@ __WLPush = function() {
         //Dispatch the pendings push notifications
         for (eventsCounter in pendindPushEventsArray) {
             pendindPushEvent = pendindPushEventsArray[eventsCounter];
-            if(subscribedEventSources[pendindPushEvent.alias] && registeredEventSources[pendindPushEvent.alias] && registeredEventSources[pendindPushEvent.alias].callback) {
+            if(subscribedEventSources[pendindPushEvent.alias]) {
                 registeredEventSources[pendindPushEvent.alias].callback(pendindPushEvent.props, pendindPushEvent.payload);
                 delete pendindPushEventsArray[eventsCounter];
             }
@@ -738,6 +738,33 @@ function formatString(text) {
     });
 };
 
+// *********************
+// ** WL.Logger **
+// *********************
+function __WLLogger() {
+	var enableLogger = true;
+
+    this.__init = function(enabled) {
+		if (typeof(enabled) !== 'undefined'){
+			enableLogger = enabled;
+		}
+    };
+
+    this.debug = function(msg) {
+        if (enableLogger && typeof (window.console) != 'undefined') {
+            window.console.log(msg);
+        }
+    };
+
+    this.error = function(msg) {
+        if (enableLogger && typeof (window.console) != 'undefined') {
+            window.console.error(msg);
+        }
+    };
+};
+
+WL.Logger = new __WLLogger;
+
 // *************************
 // ** WL.TerminatorDialog **
 // *************************
@@ -768,24 +795,13 @@ WL.App.__update = function(shouldUpdateSilently) {
 WL.App._showDirectUpdateErrorMessage = function(message) {
     var args = Array.prototype.slice.call(arguments);
     var formattedMessage = window.formatString.apply(null, args);
-    
-    var buttons = [];
-    
-    if (WL.Client.isShowCloseButtonOnDirectUpdateFailure()) {
-    	buttons.push({
-    	    text : WL.ClientMessages.close,
-    	    handler : function(){}
-    	});
-    }
-    
-    buttons.push({
+    WL.SimpleDialog.show(WL.ClientMessages.directUpdateErrorTitle, formattedMessage, [ {
+	    text : WL.ClientMessages.close,
+	    handler : function(){}
+	},{
         text : WL.ClientMessages.reload,
-        handler : function() {
-            WL.Client.reloadApp();
-        }
-    });
-    
-    WL.SimpleDialog.show(WL.ClientMessages.directUpdateErrorTitle, formattedMessage, buttons);
+        handler : WL.App.__update
+    }]);
 };
 
 WL.Device.getNetworkInfo = function(callback) {

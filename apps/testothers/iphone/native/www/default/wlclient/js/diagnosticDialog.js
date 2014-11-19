@@ -8,69 +8,44 @@
  */
 
 __WLDiagnosticDialog = function() {
-	this.showDialog = function(title, messageText, allowReload, allowDetails, response, customErrorMsg) {
-		try {
-	    	WL.App.readUserPref('directUpdateResult', {
-	    			onSuccess: buildButtonArrayAndShowDialog, 
-	    			onFailure: buildButtonArrayAndShowDialog
-	    	});
-		} catch(err) {
-			buildButtonArrayAndShowDialog(true);
-		}
-		
-    	function buildButtonArrayAndShowDialog(directUpdateResult) {
-        	var buttons = [];
-        	
-        	if (allowReload) {
-                buttons.push({
-                    text : WL.ClientMessages.reload,
-                    handler : function() {
-                        WL.Client.reloadApp();
-                    }
-                });
-            }
-
-            // modal diagnostic dialog is displayed only when Direct Update failed 
-            // (this is retrieved from users prefs; the flag itself is set by native plugin) and
-            // the developer decided to hide the Close button after DU failure. 
-        	// For other than iOS and Android environments 'directUpdateResult' will always be true 
-        	// (until readUserPref is supported in specific environment; in that case it will be null). 
-            var isModalDiagnosticDialog = directUpdateResult === 'false' && 
-										  !WL.Client.isShowCloseButtonOnDirectUpdateFailure();
-
-            // Close button is NOT added for modal diagnostic dialog. This should prevent the 
-            // user from working with application
-            if (WL.App.close && !isModalDiagnosticDialog) {
-                buttons.push({
-                    text : WL.ClientMessages.close,
-                    handler : function() {
-                    }
-                });
-            }
-
-            // Troubleshooting button
-            if (allowDetails && WL.EnvProfile.isEnabled(WL.EPField.SUPPORT_DIAGNOSTIC)) {
-                buttons.push({
-                    text : WL.ClientMessages.details,
-                    handler : function() {
-                        WL.Device.getNetworkInfo(function(networkInfoObject) {
-                            showDiagnosticTable(response, networkInfoObject, customErrorMsg);
-                        });
-                    }
-                });
-            }
-
-            if (buttons.length == 0) {
-                buttons.push({
-                    text : WL.ClientMessages.close,
-                    handler : function() {
-                    }
-                });
-            }
-            
-            
-            WL.SimpleDialog.show(title, messageText, buttons, {isModal : isModalDiagnosticDialog});
+    this.showDialog = function(title, messageText, allowReload, allowDetails, response, customErrorMsg) {
+        var buttons = [];
+        if (allowReload) {
+            buttons.push({
+                text : WL.ClientMessages.reload,
+                handler : function() {
+                    WL.Client.reloadApp();
+                }
+            });
         }
+        if (WL.App.close) {
+            buttons.push({
+                text : WL.ClientMessages.close,
+                handler : function() {
+                }
+            });
+        }
+
+        // Troubleshooting button
+        if (allowDetails && WL.EnvProfile.isEnabled(WL.EPField.SUPPORT_DIAGNOSTIC)) {
+            buttons.push({
+                text : WL.ClientMessages.details,
+                handler : function() {
+                    WL.Device.getNetworkInfo(function(networkInfoObject) {
+                        showDiagnosticTable(response, networkInfoObject, customErrorMsg);
+                    });
+                }
+            });
+        }
+
+        if (buttons.length == 0) {
+            buttons.push({
+                text : WL.ClientMessages.close,
+                handler : function() {
+                }
+            });
+        }
+        WL.SimpleDialog.show(title, messageText, buttons);
     };
 
     // Diagnostics functions

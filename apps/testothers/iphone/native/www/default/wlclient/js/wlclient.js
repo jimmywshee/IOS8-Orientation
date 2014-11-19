@@ -89,19 +89,12 @@ __WLClient = function() {
         onGetCustomDeviceProperties : WL.DeviceAuth.__defaultOnGetCustomDeviceProperties,
         onGetCustomDeviceProvisioningProperties : WL.DeviceAuth.__defaultOnGetCustomDeviceProvisioningProperties,
         validateArguments : true,
-        updateSilently : false,
-        showCloseOnRemoteDisableDenial : true,
-        showCloseOnDirectUpdateFailure : true,
-        showIOS7StatusBar : true
+        updateSilently : false
     // authenticator : ...
     // messages : ...
     // busyOptions : ...
     };
 
-    this.__getInitOptions = function() {
-    	return initOptions;
-    };
-    
     var contentPort = null;
     var authPort = null;
     var isDefaultDockActivated = false;
@@ -129,17 +122,17 @@ __WLClient = function() {
     // implementations.
     var defaultOptions = {
         onSuccess : function(response) {
-            WL.Logger.ctx({pkg: 'wl.client'}).debug("defaultOptions:onSuccess");
+            WL.Logger.debug("defaultOptions:onSuccess");
         },
         onFailure : function(response) {
-            WL.Logger.ctx({pkg: 'wl.client'}).error("defaultOptions:onFailure " + response.errorMsg);
+            WL.Logger.error("defaultOptions:onFailure " + response.errorMsg);
         },
         invocationContext : null
     };
     
     var defaultLogoutOptions = {
     		onSuccess : function(response) {
-    			WL.Logger.ctx({pkg: 'wl.client'}).debug("defaultOptions:onSuccess");
+    			WL.Logger.debug("defaultOptions:onSuccess");
     		},
     		onFailure : function(response) {
     			onDefaultInitFailure (response);
@@ -170,7 +163,7 @@ __WLClient = function() {
     	if (response.errorCode == WL.ErrorCode.CONNECTION_IN_PROGRESS) {
     		return;
     	}
-        WL.Logger.ctx({pkg: 'wl.client'}).error("Client init failed. " + response.errorMsg);
+        WL.Logger.error("Client init failed. " + response.errorMsg);
         var errMsg = (response.errorMsg == WL.ClientMessages.authFailure ? response.errorMsg
                 : WL.ClientMessages.unexpectedError);
         showWidgetContent();
@@ -255,9 +248,9 @@ __WLClient = function() {
             initResizeHandler();
         }
 
-        WL.Logger.ctx({pkg: 'wl.client'}).debug('WL.Client finalizeInit before onSuccess');
+        WL.Logger.debug('before: app init onSuccess');
         initOptions.onSuccess(new WL.Response({}, initOptions.invocationContext));
-        WL.Logger.ctx({pkg: 'wl.client'}).debug('WL.Client finalizeInit after onSuccess');
+        WL.Logger.debug('after: app init onSuccess');
 
         if (getEnv() === WL.Env.VISTA_SIDEBAR) {
             // In vista - check initial dock state
@@ -269,7 +262,7 @@ __WLClient = function() {
         }
 
         isInitialized = true;
-        WL.Logger.ctx({pkg: 'wl.client'}).debug('wlclient init success');
+        WL.Logger.debug('wlclient init success');
     }
 
     function onMobileConnectivityCheckFailure() {
@@ -640,27 +633,6 @@ __WLClient = function() {
             (typeof (contentPort.show) === 'function') ? contentPort.show() : WLJSX.show(contentPort);
         }
     }
-    
-    
-    this.isShowCloseButtonOnRemoteDisable = function()
-    {
-    	if (initOptions.showCloseOnRemoteDisableDenial == true)
-    	{		
-    		return true;
-    	}
-    	else
-    	{
-    		return false;
-    	}
-    }
-    
-    this.isShowCloseButtonOnDirectUpdateFailure = function() {
-    	if (initOptions.showCloseOnDirectUpdateFailure == true) {
-    		return true;
-    	} else {
-    		return false;
-    	}
-    }
 
     this.__hideBusy = function() {
     	if (busyCounter <= 0) {
@@ -779,7 +751,7 @@ __WLClient = function() {
         if (typeof userInfo[realm] !== 'undefined') {
             value = (userInfo[realm])[key];
         } else {
-            WL.Logger.ctx({pkg: 'wl.client'}).error("Unknown realm [" + realm + "]. null returned for key: " + key);
+            WL.Logger.error("Unknown realm [" + realm + "]. null returned for key: " + key);
         }
         return value;
     }
@@ -809,7 +781,7 @@ __WLClient = function() {
         }
 
         if (!WL_I18N_MESSAGES) {
-            WL.Logger.ctx({pkg: 'wl.client'}).debug("Application did not define an i18n messages object, skipping translation.");
+            WL.Logger.debug("Application did not define an i18n messages object, skipping translation.");
             return;
         }
         // Replace all the text in the gadget with the appropriate i18n text
@@ -833,7 +805,6 @@ __WLClient = function() {
     }
 
     function onEnvInit(options) {
-    	WL.Logger.ctx({pkg: 'wl.client'}).info("WL.Client onEnvInit ENTERING");
         if (contentPort === null || typeof contentPort == "undefined") {
             throw new Error("Missing element with 'content' id in the html.");
         }
@@ -852,16 +823,8 @@ __WLClient = function() {
         contentPort.hide = function() {
             contentPort.style.display = '';
         };
-        
-        replaceGadgetMessages();
 
-        if (initOptions.enableLogger || (typeof initOptions.logger === 'object' && initOptions.logger.enabled)) {
-            WL.Logger.on(initOptions.logger || {});
-            
-            if ((typeof initOptions.logger === 'object') && (typeof initOptions.logger.nativeOptions === 'object')) {
-            	WL.Logger.setNativeOptions(initOptions.logger.nativeOptions);
-            }
-        }
+        replaceGadgetMessages();
 
         if (WL.BrowserDetect.isExplorer && WL.BrowserDetect.version == '6') {
             var unsupportedBrowserResponse = new WL.Response({}, options.invocationContext);
@@ -878,7 +841,9 @@ __WLClient = function() {
             createUndockContent();
         }
 
-        WL.Logger.ctx({pkg: 'wl.client'}).debug('wlclient init started');
+        WL.Logger.__init(initOptions.enableLogger);
+
+        WL.Logger.debug('wlclient init started');
 
         // if container was not defined in the busyOptions - send null (so that
         // the whole viewport/body will be used)
@@ -1013,14 +978,12 @@ __WLClient = function() {
      *            connect on startup or not.
      */
     this.init = function(options) {
-    	WL.Logger.ctx({pkg: 'wl.client'}).info("WL.Client.init ENTERING");
         WL.Validators.enableValidation();
         WL.Validators.validateOptions({
             onSuccess : 'function',
             onFailure : 'function',
             onConnectionFailure : 'function',
             enableLogger : 'boolean',
-            logger : 'object',
             updateSilently : 'boolean',
             timeout : 'number',
             minAppWidth : 'number',
@@ -1030,7 +993,8 @@ __WLClient = function() {
             onUnsupportedBrowser : 'function',
             onDisabledCookies : 'function',
             onUserInstanceAccessViolation : 'function',
-            onErrorAppVersionAccessDenial : 'function', // deprecated
+            // deprecated
+            onErrorAppVersionAccessDenial : 'function',
             onErrorRemoteDisableDenial : 'function',
             onGetCustomDeviceProperties : 'function',
             onGetCustomDeviceProvisioningProperties : 'function',
@@ -1038,10 +1002,7 @@ __WLClient = function() {
             messages : 'object',
             busyOptions : 'object',
             validateArguments : 'boolean',
-            connectOnStartup : 'boolean',
-            showCloseOnRemoteDisableDenial : 'boolean',
-            showCloseOnDirectUpdateFailure : 'boolean',
-            showIOS7StatusBar : 'boolean'
+            connectOnStartup : 'boolean'
         }, options, "WL.Client.init");
 
         contentPort = WLJSX.$(DIV_ID_CONTENT);
@@ -1140,7 +1101,7 @@ __WLClient = function() {
             }
 
             var cordovaInit = function(event) {
-                WL.Logger.ctx({pkg: 'wl.client'}).debug("ondeviceready event dispatched");
+                WL.Logger.debug("ondeviceready event dispatched");
                 if ((WL.Client.getEnvironment() == WL.Env.IPHONE) || (WL.Client.getEnvironment() == WL.Env.IPAD) || (WL.Client.getEnvironment() == WL.Env.ANDROID)) {
                     WL.App.getInitParameters("appVersionPref,wlSkinName,wlSkinLoaderChecksum", cordovaInitCallback);
                 } else {
@@ -1219,14 +1180,6 @@ __WLClient = function() {
                     WL.StaticAppProps.FREE_SPACE = returnedData.freeSpace;
                     WL.StaticAppProps.SKIN_NAME = returnedData.wlSkinName;
                     WL.StaticAppProps.SKIN_LOADER_CHECKSUM = returnedData.wlSkinLoaderChecksum;
-                    
-                    // Adds status bar in iOS 7
-                    if(initOptions.showIOS7StatusBar && WL.Utils.versionCompare(device.version,"7.0",2) >= 0){
-                		var statusBar = WLJSX.$$('<div>').attr("id","wl_ios7bar");
-                		WLJSX.$$('body').prepend(statusBar);
-                		WLJSX.$$('body').addClass('wl_ios7');	
-                	}
-                    
                 }
                 if (WL.EnvProfile.isEnabled(WL.EPField.SERVER_ADDRESS_CONFIGURABLE)) {
                     WL.App.__setWLServerAddress(doConnectOnStartUp);
@@ -1283,7 +1236,6 @@ __WLClient = function() {
     // may apply to this application, and other information (i.e. checksum data
     // for direct update).
     this.connect = function(options) {
-    	WL.Logger.ctx({pkg: 'wl.client'}).info("WL.Client.connect ENTERING");
         WL.Validators.validateOptions({
             onSuccess : 'function',
             onFailure : 'function',
@@ -1291,7 +1243,7 @@ __WLClient = function() {
         }, options, 'WL.Client.connect');
 
         if (isConnecting) {
-            WL.Logger.ctx({pkg: 'wl.client'}).error("Cannot invoke WL.Client.connect while it is already executing.");
+            WL.Logger.error("Cannot invoke WL.Client.connect while it is already executing.");
             if (options && options.onFailure) {
             	var response = new WL.Response({}, initOptions.invocationContext);
             	response.errorCode = WL.ErrorCode.CONNECTION_IN_PROGRESS;
@@ -1308,7 +1260,6 @@ __WLClient = function() {
         }
 
         function onConnectSuccess(transport) {
-        	WL.Logger.ctx({pkg: 'wl.client'}).info("WL.Client.connect onConnectSuccess ENTERING");
         	
             if (transport == null || transport.responseJSON == null) {
             	showDialog(WL.ClientMessages.error, WL.ClientMessages.responseNotRecognized, true, true, {}, 
@@ -1360,7 +1311,7 @@ __WLClient = function() {
                 }
             }
 
-            WL.Logger.ctx({pkg: 'wl.client'}).debug('wlclient connect success');
+            WL.Logger.debug('wlclient connect success');
             isConnecting = false;
 
             if (WL.EnvProfile.isEnabled(WL.EPField.SUPPORT_DIRECT_UPDATE_FROM_SERVER)) {
@@ -1398,7 +1349,7 @@ __WLClient = function() {
                     if (updatesJSON.availableSkins.indexOf(newSkinName) != -1) {
                         WL.App.writeUserPref('wlSkinName', newSkinName);
                     } else {
-                        WL.Logger.ctx({pkg: 'wl.client'}).error('Cannot load skin ' + newSkinName
+                        WL.Logger.error('Cannot load skin ' + newSkinName
                                 + ' - Please check skinLoader.js file for errors.');
                     }
                 }
@@ -1409,9 +1360,9 @@ __WLClient = function() {
             }
 
             // Part II: check if there is a direct update to the application
-            if (skinHasChanged || isUpdateRequired(updatesJSON)) {
+            if (skinHasChanged || isUpdateRequired(updatesJSON.checksum)) {
                 if (updatesJSON.availableSkins.indexOf(oldSkinName) == -1) {
-                    WL.Logger.ctx({pkg: 'wl.client'}).debug("Skin " + oldSkinName
+                    WL.Logger.debug("Skin " + oldSkinName
                             + " is not on the available skins list, update to default skin.");
                     WL.App.writeUserPref('wlSkinName', 'default');
                 }
@@ -1429,22 +1380,15 @@ __WLClient = function() {
                     var notEnoughSpaceMsg = WL.Utils.formatString(
                             WL.ClientMessages.directUpdateErrorMessageNotEnoughStorage, requiredSizeForUpdateMB,
                             freeSpaceOnDeviceMB);
-                    WL.Logger.ctx({pkg: 'wl.client'}).debug(notEnoughSpaceMsg);
-                    
-                    var buttons = [ {
-                    	text : WL.ClientMessages.tryAgain,
+                    WL.Logger.debug(notEnoughSpaceMsg);
+                    WL.SimpleDialog.show(WL.ClientMessages.directUpdateNotificationTitle, notEnoughSpaceMsg, [ {
+                        text : WL.ClientMessages.tryAgain,
                         handler : sendInitRequest
-                    }];
-                	
-                	if (WL.Client.isShowCloseButtonOnDirectUpdateFailure()) {
-                		buttons.push({
-                	        text : WL.ClientMessages.close,
-                	        handler : function () {}
-                	    });
-                	}
-                    
-                    WL.SimpleDialog.show(WL.ClientMessages.directUpdateNotificationTitle, notEnoughSpaceMsg, buttons);
-                    
+                    }, {
+                        text : WL.ClientMessages.close,
+                        handler : function() {
+                        }
+                    } ]);
                     if (transport) {
                         finishInitFlow(transport);
                     }
@@ -1460,7 +1404,6 @@ __WLClient = function() {
             }
             // internal function to be called directly or via callback
             function finishInitFlow(transport) {
-            	WLJSX.unbind(document, 'foreground');
                 WLJSX.bind(document, 'foreground', onForegroundCallback);
                 options.onSuccess(transport);
             }
@@ -1477,26 +1420,10 @@ __WLClient = function() {
             }]);
         }
 
-        function isUpdateRequired(updatesJSON) {
-        	if (isNaN(updatesJSON.checksum)) {
-        		 WL.Logger.debug("Invalid direct update skin checksum received - " + updatesJSON.checksum + ". Skipping direct update.");
-        		 return false;
-        	}
-            var updateRequired = updatesJSON.checksum != WL_CHECKSUM.checksum;
-            if (updateRequired) {
-            	if (isNaN(updatesJSON.updateSize) || (updatesJSON.updateSize <= 0)) {
-	           		 WL.Logger.error("Update is required but invalid direct update size value received - " + updatesJSON.updateSize + ". Skipping direct update.");
-	           		 return false;
-	           	}
-	           	
-	           	if (isNaN(updatesJSON.updateUnpackedSize) || (updatesJSON.updateUnpackedSize <= 0)) {
-	          		 WL.Logger.error("Update is required but invalid direct update unpacked size value received - " + updatesJSON.updateUnpackedSize + ". Skipping direct update.");
-	          		 return false;
-	           	}
-            }
-            return updateRequired;
+        function isUpdateRequired(skinChecksum) {
+            return skinChecksum != WL_CHECKSUM.checksum;
         }
-        
+
         function onForegroundCallback() {
             WL.Device.getNetworkInfo(callServerOnForeground);
         }
@@ -1542,7 +1469,6 @@ __WLClient = function() {
         }
 
         function onInitFailure(transport) {
-        	WL.Logger.ctx({pkg: 'wl.client'}).info("WL.Client.connect onInitFailure ENTERING");
             showWidgetContent();
             onFailureResetSettings(transport);
         }
@@ -1611,7 +1537,7 @@ __WLClient = function() {
 
         function onLogoutSuccess(transport) {
             if (typeof userInfo[realm] === "undefined") {
-                WL.Logger.ctx({pkg: 'wl.client'}).error('onLogoutSuccess: realm: ' + realm + ' is undefined');
+                WL.Logger.error('onLogoutSuccess: realm: ' + realm + ' is undefined');
                 return;
             }
             (userInfo[realm])[WL.UserInfo.IS_USER_AUTHENTICATED] = false;
@@ -1636,7 +1562,7 @@ __WLClient = function() {
         }
 
         if (!realm) {
-            WL.Logger.ctx({pkg: 'wl.client'}).error("Invalid call for WL.Client.logout. Realm must be specified for unsecured applications.");
+            WL.Logger.error("Invalid call for WL.Client.logout. Realm must be specified for unsecured applications.");
             return;
         }
 
@@ -1726,7 +1652,7 @@ __WLClient = function() {
         // In case of 'undefined' we delete the key
         for ( var key in userPrefsHash) {
             if (typeof (userPrefsHash[key]) === 'undefined') {
-                WL.Logger.ctx({pkg: 'wl.client'}).debug('WL.Client.setUserPrefs(): value for key:' + key
+                WL.Logger.debug('WL.Client.setUserPrefs(): value for key:' + key
                         + ' is \'undefined\', will save value as null');
                 userPrefsHash[key] = null;
             }
@@ -1809,10 +1735,10 @@ __WLClient = function() {
     this.logActivity = function(activityType) {
         WL.Validators.validateArguments([ 'string' ], arguments, 'WL.Client.logActivity');
         function onMySuccess(transport) {
-            WL.Logger.ctx({pkg: 'wl.client'}).debug("Activity [" + activityType + "] logged successfully.");
+            WL.Logger.debug("Activity [" + activityType + "] logged successfully.");
         }
         function onMyFailure(transport) {
-            WL.Logger.ctx({pkg: 'wl.client'}).error("Activity [" + activityType + "] logging failed.");
+            WL.Logger.error("Activity [" + activityType + "] logging failed.");
         }
         new WLJSX.Ajax.WLRequest(REQ_PATH_LOG_ACTIVITY, {
             parameters : {
@@ -1925,41 +1851,33 @@ __WLClient = function() {
         }, options, 'WL.Client.invokeProcedure');
 
         options = extendWithDefaultOptions(options);
-        
-        var blocked = false;
         function onInvokeProcedureSuccess(transport) {
-        	if(!blocked) {
-        		blocked = true;
-	            if (!transport.responseJSON.isSuccessful) {
-	                var failResponse = new WL.Response(transport, options.invocationContext);
-	                failResponse.errorCode = WL.ErrorCode.PROCEDURE_ERROR;
-	                failResponse.errorMsg = WL.ClientMessages.serverError;
-	                failResponse.invocationResult = transport.responseJSON;
-	                if (failResponse.invocationResult.errors) {
-	                    failResponse.errorMsg += " " + failResponse.invocationResult.errors;
-	                    WL.Logger.ctx({pkg: 'wl.client'}).error(failResponse.errorMsg);
-	                }
-	                options.onFailure(failResponse);
-	            } else {
-	                var response = new WL.Response(transport, options.invocationContext);
-	                response.invocationResult = transport.responseJSON;
-	                options.onSuccess(response);
-	            }
-        	}
+            if (!transport.responseJSON.isSuccessful) {
+                var failResponse = new WL.Response(transport, options.invocationContext);
+                failResponse.errorCode = WL.ErrorCode.PROCEDURE_ERROR;
+                failResponse.errorMsg = WL.ClientMessages.serverError;
+                failResponse.invocationResult = transport.responseJSON;
+                if (failResponse.invocationResult.errors) {
+                    failResponse.errorMsg += " " + failResponse.invocationResult.errors;
+                    WL.Logger.error(failResponse.errorMsg);
+                }
+                options.onFailure(failResponse);
+            } else {
+                var response = new WL.Response(transport, options.invocationContext);
+                response.invocationResult = transport.responseJSON;
+                options.onSuccess(response);
+            }
         }
 
         function onInvokeProcedureFailure(transport) {
-        	if(!blocked) {
-        		blocked = true;
-	            setConnected(false);
-	            var errorCode = transport.responseJSON.errorCode;
-	            if (options.onConnectionFailure
-	                    && (errorCode == WL.ErrorCode.UNRESPONSIVE_HOST || errorCode == WL.ErrorCode.REQUEST_TIMEOUT)) {
-	                options.onConnectionFailure(new WL.FailResponse(transport, options.invocationContext));
-	            } else {
-	                options.onFailure(new WL.FailResponse(transport, options.invocationContext));
-	            }
-        	}
+            setConnected(false);
+            var errorCode = transport.responseJSON.errorCode;
+            if (options.onConnectionFailure
+                    && (errorCode == WL.ErrorCode.UNRESPONSIVE_HOST || errorCode == WL.ErrorCode.REQUEST_TIMEOUT)) {
+                options.onConnectionFailure(new WL.FailResponse(transport, options.invocationContext));
+            } else {
+                options.onFailure(new WL.FailResponse(transport, options.invocationContext));
+            }
         }
 
         // Build request options from invocationData
@@ -2055,7 +1973,7 @@ __WLClient = function() {
                 activeWindows[i].close();
             }
             air.NativeApplication.nativeApplication.exit();
-            WL.Logger.ctx({pkg: 'wl.client'}).debug("App closed");
+            WL.Logger.debug("App closed");
         }
     };
 
@@ -2070,7 +1988,7 @@ __WLClient = function() {
                 }
             }
             setMinimized(true);
-            WL.Logger.ctx({pkg: 'wl.client'}).debug("App minimized");
+            WL.Logger.debug("App minimized");
         }
     };
 
@@ -2085,7 +2003,7 @@ __WLClient = function() {
                 }
             }
             setMinimized(false);
-            WL.Logger.ctx({pkg: 'wl.client'}).debug("App restored");
+            WL.Logger.debug("App restored");
         }
     };
 
@@ -2215,7 +2133,7 @@ __WLClient = function() {
                     // get the correct challenge
                     var handler = WL.Client.__chMap[realm];
                     if (handler == null || typeof handler == 'undefined') {
-                        WL.Logger.ctx({pkg: 'wl.client'}).error("unknown challenge arrived, cannot process realm " + realm + " challenge.");
+                        WL.Logger.error("unknown challenge arrived, cannot process realm " + realm + " challenge.");
                         WL.SimpleDialog.show(WL.ClientMessages.error, WL.ClientMessages.authFailure, [ {
                             text : WL.ClientMessages.close
                         } ]);
@@ -2234,7 +2152,7 @@ __WLClient = function() {
                 if (Object.prototype.hasOwnProperty.call(wlFailure, realm)) {
                     handler = WL.Client.__chMap[realm];
                     if (handler != null && typeof handler !== 'undefined') {
-                    	handler.handleFailure(wlFailure[realm], wlRequest, response);
+                        handler.handleFailure(wlFailure[realm]);
                         handler.clearWaitingList();
                     } else {
                         var reason = wlFailure[realm].reason;
@@ -2385,7 +2303,7 @@ __WLClient = function() {
          */
         this.submitFailure = function(err) {
             if (typeof (err) === 'string') {
-                WL.Logger.ctx({pkg: 'wl.client'}).error(err);
+                WL.Logger.error(err);
             }
             this.activeRequest = null;
             this.clearWaitingList();
@@ -2415,8 +2333,7 @@ __WLClient = function() {
         // Creates SUPER challenge processor
         var challengeHandler = new AbstractChallengeHandler(realmName);
         challengeHandler.isWLHandler = true;
-        challengeHandler.MAX_NUMBER_OF_FAILURES = 3;
-        challengeHandler.numOfFailures = 0;
+
         // Extends it by adding new methods (can also override methods)
         challengeHandler.submitChallengeAnswer = function(answer) {
             if ((typeof answer === "undefined") || answer == null) {
@@ -2428,15 +2345,15 @@ __WLClient = function() {
             challengeHandler.activeRequest = null;
         };
 
-     // when a WL success arrives, this user method is called.
-		challengeHandler.processSuccess = function(identity, response)  {
+        // when a WL success arrives, this user method is called.
+        challengeHandler.processSuccess = function(identity) {
 
-		};
+        };
 
-		// when a WL failure arrives, this user method is called.
-		challengeHandler.handleFailure = function(err, request, response){
+        // when a WL failure arrives, this user method is called.
+        challengeHandler.handleFailure = function(err) {
 
-		};
+        };
 
         // Returns it
         return challengeHandler;
@@ -2452,7 +2369,7 @@ __WLClient = function() {
     this.createDeviceAuthChallengeHandler = function(realmName) {
         // Creates SUPER challenge processor
         var challengeHandler = WL.Client.createWLChallengeHandler(realmName);
-        challengeHandler.MAX_NUMBER_OF_FAILURES = 3;
+        
         challengeHandler.getDeviceAuthDataAsync = function(deviceAuthSettings){
         	
         	var deviceID = device.uuid;
@@ -2613,19 +2530,7 @@ __WLClient = function() {
 	        		},
 	        		deviceDataJSON, deviceProvisioning.provisioningEntity , deviceProvisioning.isProvisioningEnabled);
 	        };
-	        
-	        challengeHandler.handleFailure = function(err, request, response){
-	        	if (err.reason == "bad token") {
-	        		if (challengeHandler.numOfFailures < challengeHandler.MAX_NUMBER_OF_FAILURES){
-	        			challengeHandler.numOfFailures++;
-	        			request.sendRequest();
-	        		}
-	        		else{
-	        			request.onFailure(response);
-	        		}
-	        	}
-	        };
-	        
+        
         // Returns it
         return challengeHandler;
     };
@@ -2652,7 +2557,7 @@ __WLClient = function() {
         challengeHandler.submitLoginForm = function(reqURL, options, submitLoginFormCallback) {
             var timer = null;
 
-            WL.Logger.ctx({pkg: 'wl.client'}).debug("Request [login]");
+            WL.Logger.debug("Request [login]");
 
             function onUnresponsiveHost(transport) {
                 if (isTimeout()) {
@@ -2754,7 +2659,6 @@ __WLClient = function() {
             options.fromChallengeRequest = true;
             WL.Client.invokeProcedure(invocationData, options, true);
         };
-        
 
         // Returns it
         return challengeHandler;
@@ -2764,17 +2668,18 @@ __WLClient = function() {
      * Check if the user added a default handler for OnRemoteDisableDenial and
      * if so, activate it. If not then call the defaultRemoteDisableDenial.
      */
-    this.__handleOnRemoteDisableDenial = function(defaultonErrorRemoteDisableDenial, that,msg,downloadLink) {
-    	isConnecting = false;
-    	WL.Client.__hideBusy();
-    	
-    	if (initOptions.onErrorRemoteDisableDenial) {
-            initOptions.onErrorRemoteDisableDenial(msg,downloadLink);
+    this.__handleOnRemoteDisableDenial = function(defaultonErrorRemoteDisableDenial, that) {
+        if (initOptions.onErrorRemoteDisableDenial) {
+            WL.Client.__hideBusy();
+            initOptions.onErrorRemoteDisableDenial();
+            WL.App.close();
         } else if (initOptions.onErrorAppVersionAccessDenial) {
-            WL.Logger.ctx({pkg: 'wl.client'}).debug("onErrorAppVersionAccessDenial is deprecated, please use onErrorRemoteDisableDenial.");
+            WL.Logger.debug("onErrorAppVersionAccessDenial is deprecated, please use onErrorRemoteDisableDenial");
+            WL.Client.__hideBusy();
             initOptions.onErrorAppVersionAccessDenial();
+            WL.App.close();
         } else {
-            defaultonErrorRemoteDisableDenial(that,msg,downloadLink);
+            defaultonErrorRemoteDisableDenial(that);
         }
     };
    

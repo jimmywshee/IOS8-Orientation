@@ -69,39 +69,15 @@ function getEnv() {
     return WL.StaticAppProps.ENVIRONMENT;
 }
 
-wl_remoteDisableChallengeHandler.__generateDialogueButtons = function(downloadLink)
+wl_remoteDisableChallengeHandler.__generateDialogueButtons = function()
 {
-	// start with an empty array 
-	var buttons = [];
-	
-	// show close button in two cases:
-	// 1) its the only button (no download link)
-	// 2) the flag to show it is on 
-	if (!downloadLink || WL.Client.isShowCloseButtonOnRemoteDisable())
-	{
-		buttons = [ {
-	         text : WL.ClientMessages.close,
-	         handler : function() {
-	         }
-	     } ];
-	}
-	
-	// add download link if necessary 
-	if (downloadLink) {
-    	
-        buttons.push({
-            text : WL.ClientMessages.getNewVersion,
-            handler : function() {
-                // Note you must add the null options to openURL
-                // otherwise the event is assumed the 3rd argument.
-                WL.App.openURL(downloadLink, "_new", null);
-                WL.App.close();
-            }
-        });
-    }
-	
-		
-	return buttons;
+	 var buttons = [ {
+         text : WL.ClientMessages.close,
+         handler : function() {
+         }
+     } ];
+	 
+	 return buttons;
 }
 
 
@@ -112,13 +88,26 @@ wl_remoteDisableChallengeHandler.handleFailure = function(err) {
     /*
      * Processor default handler for failure (display message and close App).
      */
-    function defaultRemoteDisableDenialHandler(that,msg,downloadLink) {
-    	    	
-        var buttons = that.__generateDialogueButtons(downloadLink);
-                
+    function defaultRemoteDisableDenialHandler(that) {
+    	
+    	
+        var buttons = that.__generateDialogueButtons();
+
+        if (downloadLink) {
+            buttons.push({
+                text : WL.ClientMessages.getNewVersion,
+                handler : function() {
+                    // Note you must add the null options to openURL
+                    // otherwise the event is assumed the 3rd argument.
+                    WL.App.openURL(downloadLink, "_new", null);
+                    WL.App.close();
+                }
+            });
+        }
         // Patch - downloadNewVersion element is added in the msg string.
-        WL.SimpleDialog.show(WL.ClientMessages.applicationDenied, msg, buttons);
+        WL.SimpleDialog.show(WL.ClientMessages.applicationDenied, message, buttons);
+        WL.Client.__hideBusy();
     }
 
-    WL.Client.__handleOnRemoteDisableDenial(defaultRemoteDisableDenialHandler,this,message,downloadLink);
+    WL.Client.__handleOnRemoteDisableDenial(defaultRemoteDisableDenialHandler,this);
 };

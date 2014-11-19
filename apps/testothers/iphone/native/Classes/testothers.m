@@ -19,7 +19,6 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions 
 {
-    [[UIDevice currentDevice] setOrientation:UIInterfaceOrientationPortrait];
     BOOL ret = [super application:application didFinishLaunchingWithOptions:launchOptions];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didFinishWLNativeInit:) name:@"didFinishWLNativeInit" object:nil]; 
     return ret;
